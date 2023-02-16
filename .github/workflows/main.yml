@@ -1,0 +1,47 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use Node.js 12.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and test
+        run: |
+          npm run build
+          npm run test
+
+      - name: Deploy to staging
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          NODE_ENV: staging
+          AWS_REGION: us-east-1
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          npm run deploy
+
+      - name: Deploy to production
+        if: github.ref == 'refs/tags/v*' && github.event_name == 'push'
+        env:
+          NODE_ENV: production
+          AWS_REGION: us-east-1
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          npm run deploy
